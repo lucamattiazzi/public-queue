@@ -9,6 +9,7 @@ await Promise.all([
   copyFile('apps/web/index.html', 'dist/web/index.html'),
   copyFile('apps/web/src/styles.css', 'dist/web/styles.css'),
   copyFile('apps/web/site/site.css', 'dist/web/site.css'),
+  copyFile('apps/web/site/landing.css', 'dist/web/landing.css'),
   build({ entryPoints: ['apps/web/site/site.ts'], outfile: 'dist/web/site.js', bundle: true, format: 'esm', platform: 'browser', target: 'es2022', minify: true }),
 ]);
 for (const name of ['sdk', 'agent', 'server']) {

@@ -28,7 +28,7 @@ expires. Once your resolver updates, verify normally:
 curl --fail https://jobboard.grokked.it/health
 ```
 
-Open `https://jobboard.grokked.it/console/`. The root redirects there.
+Open `https://jobboard.grokked.it/console/`. The root serves the minimal landing page, with a link to the console.
 A project named `Personal` has already been provisioned with mandatory encryption.
 Its private owner token is in `.data/personal-access.json` on the server, mode 0600.
 Copy the token into the console's **Owner key** field. On your Mac:
@@ -76,8 +76,8 @@ has been paired as part of this deployment.
 This uses the existing personal project/owner-token mode, not an email-verified
 SaaS Owner account. `PQ_PUBLIC_URL` is deliberately unset, so SaaS routes, email
 registration and Stripe billing are disabled. No operator identity or SMTP
-credentials have been invented. The proxy redirects the landing page to the console
-and rejects account pages while this mode is active.
+credentials have been invented. The landing page links to the console; the proxy rejects account pages while
+this mode is active.
 
 Legacy project limits apply: 1,000 jobs/day, 100 pending, 256 MiB logical payload
 budget, 10 devices, 100 clients and seven-day terminal retention. Streaming reserves
