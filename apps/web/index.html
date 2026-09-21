@@ -9,30 +9,27 @@
   <script defer data-domain="jobboard.grokked.it" src="https://check.grokked.it/js/script.js"></script>
 </head>
 <body>
-  <header>
-    <h1><a href="/">public queue</a></h1>
-    <nav aria-label="Main">
-      <a href="https://grokked.it">/grokked</a>
-      <a href="/console/">/console</a>
-      <a href="/downloads/source.tgz">/source</a>
-    </nav>
+  <header class="site-header">
+    <a class="brand" href="/"><span class="queue-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Public Queue</span></a>
+    <a class="header-link" href="/console/">Console ↗</a>
   </header>
   <main>
-    <h2>Your models, beyond localhost.</h2>
+    <p class="eyebrow">A small bridge for your local models.</p>
+    <h1>Your models, beyond localhost.</h1>
     <p>A small bridge between your frontend and the AI models running on your computer. Jobs wait in a persistent queue; your computer picks them up when it is online.</p>
-    <p>No open ports at home. Prompts and responses are encrypted between your browser and your local agent.</p>
-    <p><a href="/console/">Open the console →</a></p>
+    <p class="privacy">No open ports at home. Prompts and responses are encrypted between your browser and your local agent.</p>
+    <div class="links"><a class="primary" href="/console/">Open the console →</a><a href="/downloads/source.tgz">Get the source ↗</a></div>
 
     <h2>How it works</h2>
     <ol>
-      <li>Install the agent on the computer running your models.</li>
-      <li>Pair it in the console and connect your frontend with the SDK.</li>
-      <li>Send a job. Follow the response as it arrives, or come back for it later.</li>
+      <li><strong>Bring your computer.</strong> Install the agent alongside your model server.</li>
+      <li><strong>Make the connection.</strong> Pair it in the console, then add the SDK to your frontend.</li>
+      <li><strong>Send now. Read later.</strong> Follow the response as it arrives, or come back for the saved result.</li>
     </ol>
     <p>For Ollama, LM Studio, llama.cpp, oMLX, vLLM and compatible text inference servers. You bring the models and the compute.</p>
 
     <h2>Get started</h2>
-    <ul>
+    <ul class="downloads">
       <li><a href="/console/">Console</a> — connect a device and try a prompt.</li>
       <li><a href="/downloads/agent.tgz">Local agent</a> — runs on your computer, with Node.js 24+.</li>
       <li><a href="/downloads/sdk.tgz">Browser SDK</a> — connect your own frontend.</li>
@@ -40,6 +37,6 @@
     </ul>
     <p class="note">Currently a personal beta. Console access requires an owner key; public signup and paid plans are not open yet.</p>
   </main>
-  <footer>A project by <a href="https://grokked.it">grokked.it</a>.</footer>
+  <footer><span>A project by <a href="https://grokked.it">grokked.it</a>.</span><a href="/console/">Console</a><a href="/downloads/source.tgz">Self-host</a></footer>
 </body>
 </html>
