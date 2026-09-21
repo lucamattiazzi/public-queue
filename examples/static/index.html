@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My local model</title><script type="module" src="./app.js"></script></head>
+<body>
+<h1>My local model, from a static page</h1>
+<p>Your private connection stays in this tab. The decryption key stays in this browser's IndexedDB.</p>
+<form id="connect"><label>Connection JSON<br><textarea id="connection" rows="6" cols="60" required></textarea></label><br><button>Connect</button></form>
+<form id="chat"><p><label>Model <input id="model" required></label></p><p><label>Prompt<br><textarea id="prompt" required rows="5" cols="60"></textarea></label></p><button id="send" disabled>Send encrypted job</button></form>
+<p id="status" role="status"></p><pre id="output"></pre><button id="resume" disabled>Resume last job</button>
+</body></html>

@@ -1,0 +1,7 @@
+jobboard.grokked.it {
+    @entry path / /index.html
+    redir @entry /console/ temporary
+    @accounts path /login /login/* /app /app/* /pricing /pricing/*
+    respond @accounts "Personal deployment: use /console/. Public accounts and billing are not enabled." 503
+    reverse_proxy public-queue:8787
+}

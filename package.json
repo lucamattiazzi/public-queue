@@ -1,0 +1,43 @@
+{
+  "name": "public-queue-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/build.mjs",
+    "check": "tsc --noEmit",
+    "test:core": "tsx --test tests/crypto.test.ts tests/store.test.ts tests/backup.test.ts tests/sdk.test.ts",
+    "test:integration": "tsx --test tests/integration.test.ts",
+    "dev": "tsx packages/server/src/cli.ts",
+    "agent": "tsx packages/agent/src/cli.ts",
+    "demo": "tsx scripts/demo.ts",
+    "test:browser": "playwright test tests/browser.spec.ts",
+    "smoke:packages": "node scripts/smoke-packages.mjs",
+    "test:saas": "tsx --test tests/accounts.test.ts tests/billing.test.ts tests/saas.test.ts tests/owner.test.ts",
+    "preflight": "node scripts/preflight.mjs",
+    "test:stream": "tsx --test tests/stream-store.test.ts tests/sse.test.ts tests/stream-integration.test.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/cors": "^11.0.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/static": "^8.0.0",
+    "fastify": "^5.0.0",
+    "nodemailer": "^10.0.10",
+    "stripe": "^22.6.2",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.0.0",
+    "@types/nodemailer": "^8.0.2",
+    "ai": "^7.0.107",
+    "esbuild": "^0.25.0",
+    "openai": "^7.19.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.0"
+  }
+}

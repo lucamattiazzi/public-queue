@@ -1,0 +1,18 @@
+services:
+  queue:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    env_file: .env
+    environment:
+      PQ_ADMIN_TOKEN: ${PQ_ADMIN_TOKEN:?Set PQ_ADMIN_TOKEN in .env}
+      PQ_ORIGINS: ${PQ_ORIGINS:-}
+      PQ_TRUST_PROXY: ${PQ_TRUST_PROXY:-}
+    volumes:
+      - queue-data:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  queue-data:

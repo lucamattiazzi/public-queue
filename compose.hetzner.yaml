@@ -1,0 +1,51 @@
+# Standalone host: only Caddy publishes ports. Keep SSH allowed in your firewall.
+services:
+  queue:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PQ_TRUST_PROXY: 172.29.83.2
+    volumes:
+      - queue-data:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [relay]
+    mem_limit: 768m
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "3" }
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      PQ_DOMAIN: ${PQ_DOMAIN:?Set PQ_DOMAIN in .env}
+      PQ_ACME_EMAIL: ${PQ_SUPPORT_EMAIL:?Set PQ_SUPPORT_EMAIL}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./Caddyfile.docker:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    networks:
+      relay:
+        ipv4_address: 172.29.83.2
+    depends_on:
+      queue:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "3" }
+networks:
+  relay:
+    ipam:
+      config:
+        - subnet: 172.29.83.0/24
+volumes:
+  queue-data:
+  caddy-data:
+  caddy-config:
