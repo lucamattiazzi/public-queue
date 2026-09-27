@@ -19,6 +19,7 @@ const { values, positionals } = parseArgs({ allowPositionals: true, options: {
   'runtime-url': { type: 'string' }, models: { type: 'string' }, config: { type: 'string' },
   'allow-plaintext': { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
   headless: { type: 'boolean' },
+  'desktop-host': { type: 'boolean' },
   'no-open': { type: 'boolean' },
 } });
 const configPath = resolve(values.config ?? join(homedir(), '.config/public-queue/agent.json'));
@@ -118,8 +119,12 @@ async function main(): Promise<void> {
   if (!['start', 'gui'].includes(positionals[0]!)) throw new Error('Unknown command. Run pq-agent --help');
   const stop = new AbortController();
   for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => stop.abort());
+  if (values['desktop-host']) {
+    process.stdin.once('end', () => stop.abort());
+    process.stdin.resume();
+  }
   const consuming = positionals[0] === 'start';
-  const showDashboard = !consuming || process.platform === 'darwin' && !values.headless;
+  const showDashboard = values['desktop-host'] || !consuming || process.platform === 'darwin' && !values.headless;
   let dashboard: Awaited<ReturnType<typeof startDashboard>> | undefined;
   let stopMenuBar: (() => Promise<void>) | undefined;
   try {
@@ -127,10 +132,10 @@ async function main(): Promise<void> {
       dashboard = await startDashboard({ server: config.server, deviceId: config.deviceId, runtimeUrl: config.runtimeUrl, models: config.models, consuming,
         loadQueue: () => agentRequest<AgentQueue>(config.server, config.token, '/v1/agent/queue', undefined, stop.signal) });
       console.log(`Local dashboard: ${dashboard.url}`);
-      if (process.platform === 'darwin' && !values.headless) {
+      if (process.platform === 'darwin' && !values.headless && !values['desktop-host']) {
         stopMenuBar = startMenuBar(dashboard.url, consuming, () => stop.abort(), () => console.log('Menu bar unavailable. Use the local dashboard link above.'));
       }
-      if (process.platform === 'darwin' && !values.headless && !values['no-open']) {
+      if (process.platform === 'darwin' && !values.headless && !values['desktop-host'] && !values['no-open']) {
         const opened = spawnSync('open', [dashboard.url], { stdio: 'ignore' });
         if (opened.error || opened.status !== 0) console.log('Open the dashboard link above in your browser.');
       }
@@ -144,6 +149,6 @@ async function main(): Promise<void> {
     console.log(`Ready. ${config.models.length} allowed model(s). Waiting for jobs; relay connections are outbound only.`);
     const { runtimeKey, ...rest } = config;
     await runWorker({ ...rest, identity, ...(runtimeKey ? { runtimeKey } : {}), onStatus: status => console.log(status) }, stop.signal);
-  } finally { stop.abort(); await stopMenuBar?.(); await dashboard?.close(); }
+  } finally { stop.abort(); if (values['desktop-host']) process.stdin.pause(); await stopMenuBar?.(); await dashboard?.close(); }
 }
 main().catch(error => { console.error(error instanceof Error ? error.message : 'Agent failed'); process.exitCode = 1; });

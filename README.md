@@ -8,7 +8,11 @@ An outbound-only agent connects Ollama, LM Studio, llama.cpp, oMLX, vLLM and com
 
 Source: [GitHub](https://github.com/lucamattiazzi/public-queue). See [publishing instructions](docs/PUBLISHING.md) for package validation and npm release requirements.
 
-## Install
+## macOS app
+
+The standalone macOS app includes its runtime, runs the agent in the menu bar, and opens the local queue dashboard in your browser. See [installation and pairing](docs/README-MACOS.md). The current preview supports macOS 14+, Apple Silicon and Intel; it is ad-hoc signed and not notarized yet.
+
+## Developer packages
 
 ```sh
 # In your frontend project

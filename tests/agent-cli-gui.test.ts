@@ -37,3 +37,31 @@ test('packaged CLI opens an authenticated monitor and preserves the queue withou
     await assert.rejects(fetch(url.origin));
   } finally { child.kill('SIGTERM'); await exit; await app.close(); await rm(directory, { recursive: true, force: true }); }
 });
+
+
+test('desktop host provides the dashboard and exits when its owning app closes stdin', { timeout: 15000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'pq-desktop-cli-'));
+  const { app, store } = await createServer({ database: ':memory:', adminToken: 't'.repeat(40) });
+  const server = await app.listen({ host: '127.0.0.1', port: 0 });
+  const project = store.createProject('Desktop', false), device = store.createDevice(project.id, 'Mac');
+  const identity = await generateIdentity(true);
+  const paired = store.pair(device.pairingCode, identity.publicKey);
+  const config = join(directory, 'agent.json');
+  await writeFile(config, JSON.stringify({ server, ...paired, publicKey: identity.publicKey, privateKey: await crypto.subtle.exportKey('jwk', identity.privateKey), runtimeUrl: 'http://127.0.0.1:1/v1', models: ['model'] }), { mode: 0o600 });
+  const child = spawn(process.execPath, [resolve('dist/packages/agent/cli.js'), 'start', '--desktop-host', '--config', config], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const exit = new Promise<number | null>((resolve, reject) => { child.once('exit', resolve); child.once('error', reject); });
+  try {
+    const url = await new Promise<URL>((resolve, reject) => {
+      let output = '';
+      const timer = setTimeout(() => reject(new Error('Desktop dashboard timeout')), 8000);
+      child.stdout.on('data', chunk => { output += chunk; const match = /Local dashboard: (http:\/\/\S+)/.exec(output); if (match) { clearTimeout(timer); resolve(new URL(match[1]!)); } });
+      child.once('exit', () => { clearTimeout(timer); reject(new Error('Desktop host exited early')); });
+    });
+    const response = await fetch(`${url.origin}/api/status`, { headers: { authorization: `Bearer ${url.hash.slice(1)}` } });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).consuming, true);
+    child.stdin.end();
+    assert.equal(await exit, 0);
+    await assert.rejects(fetch(url.origin));
+  } finally { child.kill('SIGTERM'); await exit; await app.close(); await rm(directory, { recursive: true, force: true }); }
+});

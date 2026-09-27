@@ -18,7 +18,8 @@
     "smoke:packages": "node scripts/smoke-packages.mjs",
     "test:saas": "tsx --test tests/accounts.test.ts tests/billing.test.ts tests/saas.test.ts tests/owner.test.ts",
     "preflight": "node scripts/preflight.mjs",
-    "test:stream": "tsx --test tests/stream-store.test.ts tests/sse.test.ts tests/stream-integration.test.ts"
+    "test:stream": "tsx --test tests/stream-store.test.ts tests/sse.test.ts tests/stream-integration.test.ts",
+    "package:macos": "pnpm build && node scripts/package-macos.mjs"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",

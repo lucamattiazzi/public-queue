@@ -1,5 +1,7 @@
 # Dashboard locale e barra dei menu su macOS
 
+Per l’app autonoma `.app`/DMG, senza Node o terminale, vedi [Public Queue per macOS](README-MACOS.md). Le istruzioni seguenti riguardano solo il pacchetto CLI.
+
 L’agent include una dashboard nel browser e un’icona nella barra dei menu di macOS.
 Non è necessario installare Electron o Xcode. Servono Node.js 24+ e un runtime locale
 con un modello disponibile. Il componente nativo incluso supporta macOS 13+ su
