@@ -27,7 +27,17 @@ const configSchema = z.object({
   privateKey: z.record(z.string(), z.unknown()), runtimeUrl: z.string(), models: z.array(z.string()).min(1),
   runtimeKey: z.string().optional(), allowPlaintext: z.boolean().default(false),
 });
-const readConfig = async () => configSchema.parse(JSON.parse(await readFile(configPath, 'utf8')));
+const readConfig = async () => {
+  let contents: string;
+  try { contents = await readFile(configPath, 'utf8'); }
+  catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      throw new Error(`No agent configuration at ${configPath}. Open your relay's /console/ to create a device and pairing code, then run pq-agent connect --server URL --code CODE. If you paired with a custom path, pass the same --config PATH to connect and subsequent commands.`);
+    }
+    throw error;
+  }
+  return configSchema.parse(JSON.parse(contents));
+};
 async function saveConfig(value: unknown): Promise<void> {
   await mkdir(dirname(configPath), { recursive: true, mode: 0o700 });
   const temporary = `${configPath}.tmp`;
