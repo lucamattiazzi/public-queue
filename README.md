@@ -6,6 +6,8 @@ An outbound-only agent connects Ollama, LM Studio, llama.cpp, oMLX, vLLM and com
 
 **Status: deployable SaaS implementation; public infrastructure and real payments not yet verified.** Includes a sales website, email-link accounts, customer dashboard, Free/Premium quotas, Stripe Checkout/portal/signed webhooks, downloadable SDK/agent and a durable encrypted SQLite queue. Premium is €29/year; encrypted progressive text and existing-chat fetch adapters are included. Package names are provisional; **nothing has been published to npm**.
 
+Source: [GitHub](https://github.com/lucamattiazzi/public-queue). See [publishing instructions](docs/PUBLISHING.md) for package validation and npm release requirements.
+
 ## Accounts: Free, Premium and your private Owner exemption
 
 - [Create your account and use it without commercial quotas](docs/README-ACCOUNT.md)

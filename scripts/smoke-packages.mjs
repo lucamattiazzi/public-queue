@@ -16,7 +16,7 @@ try {
   run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', ...['sdk', 'agent'].map(name => resolve(`dist/web/downloads/${name}.tgz`))], consumer);
   writeFileSync(join(consumer, 'consumer.mts'), `import { PublicQueue, type ChatResult } from '@public-queue/sdk';\nconst client = new PublicQueue({server:'http://127.0.0.1:8787',token:'test',deviceId:'test',publicKey:'test'});\nconst result: Promise<ChatResult> = client.wait('some-id');\nvoid result;\n`);
   run(process.execPath, [resolve('node_modules/typescript/bin/tsc'), '--strict', '--noEmit', '--skipLibCheck', '--target', 'ES2023', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--lib', 'ES2023,DOM', 'consumer.mts'], consumer);
-  const help = run(process.execPath, [join(consumer, 'node_modules/@public-queue/agent/cli.js'), '--help'], consumer);
+  const help = run(join(consumer, 'node_modules/.bin/pq-agent'), ['--help'], consumer);
   if (!help.includes('connect --server')) throw new Error('Agent binary did not run');
   const native = join(consumer, 'node_modules/@public-queue/agent/native/public-queue-menubar');
   if (!statSync(native).isFile()) throw new Error('Native menu bar helper missing from agent package');
