@@ -4,9 +4,20 @@
 
 An outbound-only agent connects Ollama, LM Studio, llama.cpp, oMLX, vLLM and compatible inference servers to a persistent job API. A small browser SDK encrypts requests and retrieves results, even after the page is refreshed.
 
-**Status: deployable SaaS implementation; public infrastructure and real payments not yet verified.** Includes a sales website, email-link accounts, customer dashboard, Free/Premium quotas, Stripe Checkout/portal/signed webhooks, downloadable SDK/agent and a durable encrypted SQLite queue. Premium is €29/year; encrypted progressive text and existing-chat fetch adapters are included. Package names are provisional; **nothing has been published to npm**.
+**Status: deployable SaaS implementation; public infrastructure and real payments not yet verified.** Includes a sales website, email-link accounts, customer dashboard, Free/Premium quotas, Stripe Checkout/portal/signed webhooks, downloadable SDK/agent and a durable encrypted SQLite queue. Premium is €29/year; encrypted progressive text and existing-chat fetch adapters are included. The npm packages are `@lucamattiazzi/public-queue-sdk` and `@lucamattiazzi/public-queue-agent`.
 
 Source: [GitHub](https://github.com/lucamattiazzi/public-queue). See [publishing instructions](docs/PUBLISHING.md) for package validation and npm release requirements.
+
+## Install
+
+```sh
+# In your frontend project
+pnpm add @lucamattiazzi/public-queue-sdk
+# On the machine running your model (Node.js 24+)
+npm install -g @lucamattiazzi/public-queue-agent
+```
+
+Pair the agent using your relay console before running `pq-agent start`.
 
 ## Accounts: Free, Premium and your private Owner exemption
 
@@ -97,7 +108,7 @@ The relay transports persisted encrypted blocks through cursor polling; the adap
 Install the built SDK tarball in your frontend project, then:
 
 ```ts
-import { PublicQueue } from '@public-queue/sdk';
+import { PublicQueue } from '@lucamattiazzi/public-queue-sdk';
 
 // Obtain this user's private connection from login or an explicit paste/pairing UI.
 // Never hardcode a shared token into a publicly served bundle.

@@ -23,19 +23,17 @@ The server is distributed as source with Docker deployment instructions.
 
 ## Publish to npm
 
-The initial names are `@public-queue/sdk` and `@public-queue/agent`. Publication
-requires an npm account authorized to publish in the `public-queue` organization.
-Package availability alone does not establish ownership of that scope. If another
-scope is selected, update the manifest generator, imports, examples and package smoke
-checks together before building.
+The packages are `@lucamattiazzi/public-queue-sdk` and
+`@lucamattiazzi/public-queue-agent`. Publication requires the `lucamattiazzi`
+npm account or an explicitly authorized maintainer.
 
 ```sh
 npm login
 npm whoami
 (cd dist/packages/sdk && npm publish --access public)
 (cd dist/packages/agent && npm publish --access public)
-npm view @public-queue/sdk version
-npm view @public-queue/agent version
+npm view @lucamattiazzi/public-queue-sdk version
+npm view @lucamattiazzi/public-queue-agent version
 ```
 
 Complete npm's authentication/2FA prompts locally; never store credentials in the
@@ -44,7 +42,7 @@ repository. A published version cannot be reused. Update the version in
 
 ## GitHub release
 
-Attach the tested `dist/tarballs/public-queue-agent-0.1.0.tgz` and
-`dist/tarballs/public-queue-sdk-0.1.0.tgz` to the matching GitHub version tag.
+Attach the tested `dist/tarballs/lucamattiazzi-public-queue-agent-0.1.1.tgz` and
+`dist/tarballs/lucamattiazzi-public-queue-sdk-0.1.1.tgz` to the matching GitHub version tag.
 GitHub archive availability does not mean the packages are published on npm.
 The macOS helper is universal Intel/Apple Silicon and ad-hoc signed, not notarized.

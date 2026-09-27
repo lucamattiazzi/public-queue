@@ -8,7 +8,7 @@ Apple Silicon e Intel; valgono anche i requisiti macOS della versione Node insta
 ## Installare o aggiornare
 
 ```sh
-npm install -g https://jobboard.grokked.it/downloads/agent.tgz
+npm install -g @lucamattiazzi/public-queue-agent
 ```
 
 L’installazione non avvia processi né apre finestre. Le credenziali esistenti in

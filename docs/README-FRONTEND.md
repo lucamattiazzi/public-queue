@@ -19,7 +19,7 @@ Nel progetto che usa già `openai`:
 ```ts
 // chat.ts
 import OpenAI from 'openai';
-import { PublicQueue, createOpenAIFetch, type Connection } from '@public-queue/sdk';
+import { PublicQueue, createOpenAIFetch, type Connection } from '@lucamattiazzi/public-queue-sdk';
 
 export function connectLocalChat(connection: Connection) {
   const queue = new PublicQueue(connection);
@@ -69,7 +69,7 @@ Nel progetto React che usa `ai` e `@ai-sdk/react`:
 import { useMemo, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { PublicQueue, createUIMessageFetch, type Connection } from '@public-queue/sdk';
+import { PublicQueue, createUIMessageFetch, type Connection } from '@lucamattiazzi/public-queue-sdk';
 
 export function LocalChat({ connection, model }: { connection: Connection; model: string }) {
   const [input, setInput] = useState('');
@@ -108,7 +108,7 @@ Per riprendere usa lo stesso client token e la stessa chiave IndexedDB del brows
 
 ```ts
 // resume.ts
-import { PublicQueue, type Connection } from '@public-queue/sdk';
+import { PublicQueue, type Connection } from '@lucamattiazzi/public-queue-sdk';
 
 export async function resume(connection: Connection, jobId: string, show: (text: string) => void) {
   const queue = new PublicQueue(connection);
