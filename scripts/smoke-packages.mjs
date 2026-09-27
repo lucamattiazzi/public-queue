@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 const run = (cmd, args, cwd = process.cwd()) => {
@@ -18,6 +18,9 @@ try {
   run(process.execPath, [resolve('node_modules/typescript/bin/tsc'), '--strict', '--noEmit', '--skipLibCheck', '--target', 'ES2023', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--lib', 'ES2023,DOM', 'consumer.mts'], consumer);
   const help = run(process.execPath, [join(consumer, 'node_modules/@public-queue/agent/cli.js'), '--help'], consumer);
   if (!help.includes('connect --server')) throw new Error('Agent binary did not run');
+  const native = join(consumer, 'node_modules/@public-queue/agent/native/public-queue-menubar');
+  if (!statSync(native).isFile()) throw new Error('Native menu bar helper missing from agent package');
+  if (process.platform === 'darwin' && !run(native, ['--check'], consumer).includes('Public Queue')) throw new Error('Packaged native helper did not run');
   const imports = run(process.execPath, ['--input-type=module', '-e', "import { PublicQueue, createOpenAIFetch, createUIMessageFetch } from '@public-queue/sdk'; if([PublicQueue, createOpenAIFetch, createUIMessageFetch].some(value => typeof value !== 'function')) process.exit(1)"], consumer);
   console.log('Installed SDK and agent tarballs in an isolated consumer. Imports, types and CLI passed.');
 } finally { rmSync(consumer, { recursive: true, force: true }); }

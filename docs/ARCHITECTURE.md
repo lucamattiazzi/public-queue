@@ -42,7 +42,7 @@ Every authenticated route accepts `Authorization: Bearer TOKEN`. No cookie authe
 | `POST /v1/agent/jobs/:id/heartbeat` | Device | `{attemptId}` → extend valid lease |
 | `POST /v1/agent/jobs/:id/finish` | Device | `{attemptId, result, success}` → durable completion |
 
-An encrypted payload is `{mode:"encrypted", data:{version:1, publicKey, iv, ciphertext}}`. A plaintext payload is `{mode:"plain", data:...}`. Cleartext chat supports `model`, text `messages`, optional `temperature`, `max_tokens` and `stream`. Responses are `{text, finishReason}`. Tool execution, embeddings and multimodal payloads are not implemented.
+An encrypted payload is `{mode:"encrypted", data:{version:1, publicKey, iv, ciphertext}}`. A plaintext payload is `{mode:"plain", data:...}`. Cleartext chat supports `model`, text `messages`, optional `temperature`, `max_tokens`, `stream`, `response_format` (JSON object/schema), and `chat_template_kwargs` with only `enable_thinking`. Those optional controls are forwarded to a compatible runtime; the agent does not emulate constrained generation. Responses are `{text, finishReason}`. Tool execution, embeddings and multimodal payloads are not implemented.
 
 Errors use `{error: CODE}` with HTTP 400/401/404/409/413/429 as appropriate. A stale attempt receives `409 lease_lost`. Job IDs are client-generated UUIDs. Duplicate IDs with the same submitted payload/TTL return the existing job; conflicting payloads are rejected. Retention deletion also ends that ID's idempotency window.
 

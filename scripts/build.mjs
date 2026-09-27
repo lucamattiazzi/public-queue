@@ -17,8 +17,12 @@ for (const name of ['sdk', 'agent', 'server']) {
   const dir = `dist/packages/${name}`;
   await mkdir(dir, { recursive: true });
   const isSdk = name === 'sdk';
-  await build({ entryPoints: [`packages/${name}/src/${isSdk ? 'index' : 'cli'}.ts`], outfile: `${dir}/${isSdk ? 'index' : 'cli'}.js`, bundle: true, format: 'esm', platform: isSdk ? 'browser' : 'node', target: isSdk ? 'es2022' : 'node24', minify: isSdk, ...(name === 'server' ? { packages: 'external' } : {}) });
+  await build({ entryPoints: [`packages/${name}/src/${isSdk ? 'index' : 'cli'}.ts`], outfile: `${dir}/${isSdk ? 'index' : 'cli'}.js`, bundle: true, format: 'esm', platform: isSdk ? 'browser' : 'node', target: isSdk ? 'es2022' : 'node24', minify: isSdk, ...(name === 'server' ? { packages: 'external' } : {}), ...(name === 'agent' ? { banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" } } : {}) });
   if (!isSdk) await chmod(`${dir}/cli.js`, 0o755);
+  if (name === 'agent') {
+    await cp('packages/agent/native', `${dir}/native`, { recursive: true });
+    await chmod(`${dir}/native/public-queue-menubar`, 0o755);
+  }
   await cp('dist/types', `${dir}/types`, { recursive: true });
   const manifest = { name: `@public-queue/${name}`, version: '0.1.0', description: { sdk: 'Browser SDK for encrypted durable local inference jobs', agent: 'Outbound-only agent for local inference servers', server: 'Durable job service for local inference' }[name], type: 'module', license: 'MIT', ...(isSdk ? { main: './index.js', types: './types/sdk/src/index.d.ts', exports: { '.': { types: './types/sdk/src/index.d.ts', import: './index.js' } }, sideEffects: false, dependencies: { zod: root.dependencies.zod } } : { bin: { [`pq-${name}`]: './cli.js' }, engines: { node: '>=24.0.0' }, ...(name === 'server' ? { dependencies: root.dependencies } : {}) }) };
   await writeFile(`${dir}/package.json`, JSON.stringify(manifest, null, 2) + '\n');

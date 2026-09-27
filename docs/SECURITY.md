@@ -49,3 +49,15 @@ Checkout amounts and price IDs are server-controlled. Stripe webhook signature v
 Deleting an account closes open checkouts and cancels subscriptions before erasing local data. Existing backups and provider financial records follow their stated retention policies. This implementation does not configure a backup destination, tax registrations or legal compliance for the operator.
 
 Progressive stream blocks have independent random IVs and authenticated attempt/sequence context. Job identity, attempts, ordering, ciphertext sizes and timing remain visible to the relay. Stream storage is bounded and charged to the project budget; observing a job and cancelling it are separate actions.
+
+## Local agent dashboard
+
+The optional browser dashboard binds only to 127.0.0.1 on an ephemeral port, checks
+Host/Origin, and requires a random per-process bearer token for metadata access.
+It has no CORS or analytics and never returns the relay token, runtime credentials,
+private keys, prompts or results. Its URL fragment is moved to tab session storage.
+The macOS status-item helper uses the same local session to read queue counts and
+opens the dashboard on request. It exits when its parent process closes its stdin.
+The relay's agent queue endpoint is device-scoped and returns bounded metadata
+only; it cannot claim or cancel jobs. Local malware or a compromised browser remains
+outside this protection.

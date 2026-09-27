@@ -29,6 +29,9 @@ importers:
       stripe:
         specifier: ^22.6.2
         version: 22.6.2(@types/node@24.13.5)
+      undici:
+        specifier: 7.29.1
+        version: 7.29.1
       zod:
         specifier: ^4.0.0
         version: 4.6.5

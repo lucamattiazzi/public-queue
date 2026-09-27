@@ -106,6 +106,7 @@ export async function createServer(options: ServerOptions) {
     store.append(agent.id, idSchema.parse(request.params).id, body.attemptId, body.sequence, body.payload); return { ok: true };
   });
   app.delete('/v1/jobs/:id', async request => store.cancel(store.client(bearer(request.headers.authorization)).id, idSchema.parse(request.params).id));
+  app.get('/v1/agent/queue', async request => store.agentQueue(store.agent(bearer(request.headers.authorization)).id));
   app.post('/v1/agent/claim', async request => {
     const agent = store.agent(bearer(request.headers.authorization));
     return { job: store.claim(agent.id) };

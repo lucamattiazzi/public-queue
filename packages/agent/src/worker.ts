@@ -5,6 +5,8 @@ import type { Assignment, ChatResult, Payload } from '../../protocol/src/index.j
 import { open, seal } from '../../protocol/src/crypto.js';
 import type { Identity } from '../../protocol/src/crypto.js';
 import { sleep } from '../../sdk/src/index.js';
+import { inferenceFetch } from './runtime.js';
+import type { Response as InferenceResponse } from 'undici';
 
 export interface WorkerOptions {
   server: string; token: string; deviceId: string; identity: Identity;
@@ -14,7 +16,7 @@ export interface WorkerOptions {
 class HttpError extends Error { constructor(readonly status: number) { super(`HTTP ${status}`); } }
 export async function agentRequest<T>(server: string, token: string, path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${requireSecureUrl(server)}${path}`, {
-    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    method: body === undefined ? 'GET' : 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000), redirect: 'error',
   });
   if (!response.ok) throw new HttpError(response.status);
@@ -25,7 +27,7 @@ export function runtimeBase(value: string): string {
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error('Invalid runtime URL');
   return url.href.replace(/\/$/, '');
 }
-async function boundedJson(response: Response, maxBytes = 1_000_000): Promise<unknown> {
+async function boundedJson(response: Response | InferenceResponse, maxBytes = 1_000_000): Promise<unknown> {
   if (!response.body) throw new Error('Empty inference response');
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = []; let total = 0;
@@ -69,7 +71,7 @@ export async function execute(job: Assignment, options: WorkerOptions, signal: A
       const request = chatSchema.parse(data);
       if (!options.models.includes(request.model)) throw new Error('Model is not allowed on this device');
       if (Boolean(request.stream) !== Boolean(job.stream)) throw new Error('Stream mode mismatch');
-      const response = await fetch(`${runtimeBase(options.runtimeUrl)}/chat/completions`, {
+      const response = await inferenceFetch(`${runtimeBase(options.runtimeUrl)}/chat/completions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(options.runtimeKey ? { Authorization: `Bearer ${options.runtimeKey}` } : {}) },
         body: JSON.stringify({ ...request, max_tokens: request.max_tokens ?? 2048, stream: Boolean(job.stream) }), signal: workSignal, redirect: 'error',
       });
@@ -117,7 +119,7 @@ export async function runWorker(options: WorkerOptions, signal: AbortSignal): Pr
   }
 }
 
-async function streamCompletion(response: Response, job: Assignment, options: WorkerOptions, signal: AbortSignal): Promise<ChatResult> {
+async function streamCompletion(response: InferenceResponse, job: Assignment, options: WorkerOptions, signal: AbortSignal): Promise<ChatResult> {
   if (!response.body || !response.headers.get('content-type')?.includes('text/event-stream')) throw new Error('Runtime did not provide SSE');
   let serializedBytes = 64;
   const encoder = new TextEncoder();

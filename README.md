@@ -61,7 +61,17 @@ pnpm agent start
 5. Use **Open in playground**, enter the exact model ID selected during agent setup, and submit a job.
 6. For background operation after installing the agent package: `pq-agent service install`. This installs a macOS LaunchAgent or Linux user service. No service is installed merely by installing the package.
 
-The agent never opens a listening port. `connect` checks `/v1/models`, asks which model to allow, and saves a mode-0600 configuration including its private key. Local runtime authentication uses `PQ_RUNTIME_KEY` at pairing time. The runtime URL and model allowlist are configured **on the device**, never by a queued request.
+Relay connections are outbound-only. The optional local dashboard listens only on a random loopback port; `start --headless` opens no listening port. `connect` checks `/v1/models`, asks which model to allow, and saves a mode-0600 configuration including its private key. Local runtime authentication uses `PQ_RUNTIME_KEY` at pairing time. The runtime URL and model allowlist are configured **on the device**, never by a queued request.
+
+## Local dashboard and macOS menu bar
+
+On macOS, `pq-agent start` opens a local browser dashboard and a menu bar icon.
+See pending/running jobs and recent outcomes without exposing your computer.
+The icon reopens the dashboard and can quit the agent. Use `start --no-open` to
+keep the icon without opening a browser, or `start --headless` for worker-only mode.
+`pq-agent gui` monitors an already-running agent without starting another worker.
+The macOS login service runs with the icon but does not open a browser automatically.
+See [local app setup and upgrades](docs/README-LOCAL-APP.md).
 
 | Runtime preset | Default base URL |
 |---|---|
@@ -71,6 +81,8 @@ The agent never opens a listening port. `connect` checks `/v1/models`, asks whic
 | `omlx` / `vllm` | `http://127.0.0.1:8000/v1` |
 
 Ports are presets, not discovery guarantees. Override with `--runtime-url`. For SGLang, LocalAI, llamafile or other compatible servers use `--runtime custom --runtime-url URL`. Compatibility requires `GET /models` and non-streaming `POST /chat/completions` under the configured base, with text messages and `choices[].message.content`; streaming additionally requires OpenAI-compatible SSE deltas, a finish reason and `[DONE]`. Tool calls, vision, reasoning-specific formats and proprietary APIs are not promised.
+
+Text requests can also carry `response_format` (`json_object` or `json_schema` with `name`, optional `strict`, and `schema`) and `chat_template_kwargs: { enable_thinking: false }`. Rebuild both SDK and agent to use these optional fields; the runtime must support them. Prompt Chess uses them with llama.cpp for bounded strategy compilation. The relay still transports opaque encrypted payloads: this does not turn the stock chat agent into a general Python/model job runner.
 
 ## Keep your existing chat SDK
 

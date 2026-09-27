@@ -8,6 +8,8 @@ Use an Ubuntu/Debian Hetzner server with Docker Engine and the Compose plugin in
 
 Copy this repository to the server, or extract `dist/web/downloads/source.tgz`. The source archive contains no `.env`, database, dependencies or credentials. No npm publication is needed. Docker builds the application and downloadable agent/SDK from source.
 
+On the shared 2 GB `jobboard.grokked.it` host, build outside the VPS: dependency installation during a Docker build exhausted available memory and interrupted other sites. The local-GUI release uses prebuilt `dist/` over the existing runtime image, because server runtime dependencies are unchanged. Its staging Dockerfile is in `.data/releases/local-gui/` on the host; `public-queue:before-local-gui` retains the previous image. Future server dependency changes require a new runtime image built for the server architecture. Activate a prepared image with `docker compose -p apps -f public-queue-compose.yml up -d --no-build public-queue` from `/home/deploy/apps`. Never use `--remove-orphans` here: the other containers belong to the shared deployment.
+
 ## 2. Configure
 
 With Node 24+ installed on the host:
@@ -76,7 +78,7 @@ The `/console/` route retains administrator/owner-key provisioning for self-host
 
 ## 5. Run the agent in the background
 
-After installing the actual built package, run `pq-agent service install` on macOS/Linux; `service uninstall` removes only its managed service. macOS starts at user login. Linux user services may need `loginctl enable-linger USER` to run while logged out. These commands do not install/start model servers or wake sleeping computers. Windows can run `pq-agent start` in a terminal or Task Scheduler; there is no Windows GUI installer.
+After installing the actual built package, run `pq-agent service install` on macOS/Linux; `service uninstall` removes only its managed service. macOS starts at user login with the local dashboard and menu bar icon, without opening the browser. See [local GUI](README-LOCAL-APP.md). Linux user services may need `loginctl enable-linger USER` to run while logged out. These commands do not install/start model servers or wake sleeping computers. Windows can run `pq-agent start` in a terminal or Task Scheduler; there is no Windows GUI installer.
 
 Agent configuration/private keys are stored in `~/.config/public-queue/agent.json`, mode 0600. Optional `PQ_RUNTIME_KEY` is stored locally during pairing, not sent to the relay. Back up local private keys separately if recovery matters.
 

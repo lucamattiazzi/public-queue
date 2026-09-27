@@ -1,5 +1,5 @@
 /** Bounded SSE reader. Handles split UTF-8, CR/LF/CRLF, comments and multiline data. */
-export async function* readSSE(body: ReadableStream<Uint8Array>, maxBytes = 8_000_000): AsyncGenerator<string> {
+export async function* readSSE(body: { getReader(): Pick<ReadableStreamDefaultReader<Uint8Array>, 'read' | 'cancel' | 'releaseLock'> }, maxBytes = 8_000_000): AsyncGenerator<string> {
   const reader = body.getReader(), decoder = new TextDecoder('utf-8', { fatal: true });
   let buffer = '', data: string[] = [], size = 0, eventSize = 0;
   try {

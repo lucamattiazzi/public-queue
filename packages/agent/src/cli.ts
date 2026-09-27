@@ -9,12 +9,17 @@ import { z } from 'zod';
 import { fingerprint, generateIdentity, restoreIdentity } from '../../protocol/src/crypto.js';
 import { requireSecureUrl } from '../../protocol/src/index.js';
 import { agentRequest, discoverModels, runWorker, runtimeBase } from './worker.js';
+import { startDashboard } from './dashboard.js';
+import { startMenuBar } from './menubar.js';
+import type { AgentQueue } from '../../protocol/src/index.js';
 
 const presets: Record<string, string> = { ollama: 'http://127.0.0.1:11434/v1', lmstudio: 'http://127.0.0.1:1234/v1', 'llama.cpp': 'http://127.0.0.1:8080/v1', omlx: 'http://127.0.0.1:8000/v1', vllm: 'http://127.0.0.1:8000/v1' };
 const { values, positionals } = parseArgs({ allowPositionals: true, options: {
   server: { type: 'string' }, code: { type: 'string' }, runtime: { type: 'string' },
   'runtime-url': { type: 'string' }, models: { type: 'string' }, config: { type: 'string' },
   'allow-plaintext': { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+  headless: { type: 'boolean' },
+  'no-open': { type: 'boolean' },
 } });
 const configPath = resolve(values.config ?? join(homedir(), '.config/public-queue/agent.json'));
 const configSchema = z.object({
@@ -70,15 +75,15 @@ async function service(action: string): Promise<void> {
     if (action === 'uninstall') { run('launchctl', ['bootout', `${domain}/dev.public-queue.agent`]); await unlink(target); console.log('Agent service removed. Device configuration is preserved.'); return; }
     await readConfig();
     await mkdir(dirname(target), { recursive: true });
-    const args = [process.execPath, resolve(process.argv[1]!), 'start', '--config', configPath];
-    await writeFile(target, `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>Label</key><string>dev.public-queue.agent</string><key>ProgramArguments</key><array>${args.map(arg => `<string>${xml(arg)}</string>`).join('')}</array><key>RunAtLoad</key><true/><key>KeepAlive</key><true/><key>ThrottleInterval</key><integer>10</integer></dict></plist>\n`, { mode: 0o600 });
+    const args = [process.execPath, resolve(process.argv[1]!), 'start', '--no-open', '--config', configPath];
+    await writeFile(target, `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>Label</key><string>dev.public-queue.agent</string><key>ProgramArguments</key><array>${args.map(arg => `<string>${xml(arg)}</string>`).join('')}</array><key>RunAtLoad</key><true/><key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict><key>ThrottleInterval</key><integer>10</integer></dict></plist>\n`, { mode: 0o600 });
     run('launchctl', ['bootstrap', domain, target]);
   } else if (process.platform === 'linux') {
     if (action === 'uninstall') { run('systemctl', ['--user', 'disable', '--now', 'public-queue-agent']); await unlink(join(homedir(), '.config/systemd/user/public-queue-agent.service')); run('systemctl', ['--user', 'daemon-reload']); console.log('Agent service removed. Device configuration is preserved.'); return; }
     await readConfig();
     const target = join(homedir(), '.config/systemd/user/public-queue-agent.service');
     await mkdir(dirname(target), { recursive: true });
-    await writeFile(target, `[Unit]\nDescription=Public Queue local inference agent\nAfter=network-online.target\n[Service]\nExecStart=${[process.execPath, resolve(process.argv[1]!), 'start', '--config', configPath].map(unitQuote).join(' ')}\nRestart=on-failure\nRestartSec=10\nUMask=0077\nNoNewPrivileges=true\n[Install]\nWantedBy=default.target\n`, { mode: 0o600 });
+    await writeFile(target, `[Unit]\nDescription=Public Queue local inference agent\nAfter=network-online.target\n[Service]\nExecStart=${[process.execPath, resolve(process.argv[1]!), 'start', '--headless', '--config', configPath].map(unitQuote).join(' ')}\nRestart=on-failure\nRestartSec=10\nUMask=0077\nNoNewPrivileges=true\n[Install]\nWantedBy=default.target\n`, { mode: 0o600 });
     run('systemctl', ['--user', 'daemon-reload']); run('systemctl', ['--user', 'enable', '--now', 'public-queue-agent']);
     console.log('For startup without an interactive login, enable lingering for this user (see deployment docs).');
   } else throw new Error('Automatic service installation supports macOS and Linux. On Windows run pq-agent start via Task Scheduler.');
@@ -86,7 +91,7 @@ async function service(action: string): Promise<void> {
 }
 async function main(): Promise<void> {
   if (values.help || !positionals[0]) {
-    console.log(`Public Queue · local models, durable jobs, no open ports\n\nCommands:\n  connect --server URL --code CODE [--runtime ollama|lmstudio|llama.cpp|omlx|vllm]\n          [--runtime-url http://127.0.0.1:8000/v1] [--models model-a,model-b]\n          [--allow-plaintext] [--config PATH]\n  start       Consume jobs until stopped\n  doctor      Check the service, runtime and selected models\n  key         Print the pinned public key and fingerprint\n  service install|uninstall  Manage a macOS/Linux user service\n\nSet PQ_RUNTIME_KEY before connect if your local runtime requires authentication.\nE2E encryption is required by default. No inference server management endpoints are exposed.`); return;
+    console.log(`Public Queue · local models, durable jobs, no open ports\n\nCommands:\n  connect --server URL --code CODE [--runtime ollama|lmstudio|llama.cpp|omlx|vllm]\n          [--runtime-url http://127.0.0.1:8000/v1] [--models model-a,model-b]\n          [--allow-plaintext] [--config PATH]\n  start [--headless|--no-open]  Consume jobs; macOS dashboard and menu bar\n  gui [--no-open]  Local queue monitor and macOS menu bar (no inference)\n  doctor      Check the service, runtime and selected models\n  key         Print the pinned public key and fingerprint\n  service install|uninstall  Manage a macOS/Linux user service\n\nSet PQ_RUNTIME_KEY before connect if your local runtime requires authentication.\nE2E encryption is required by default. No inference server management endpoints are exposed.`); return;
   }
   if (positionals[0] === 'connect') { await connect(); return; }
   if (positionals[0] === 'service') { await service(positionals[1] ?? ''); return; }
@@ -100,12 +105,35 @@ async function main(): Promise<void> {
     if (missing.length) throw new Error(`Selected models not available: ${missing.join(', ')}`);
     console.log(`Service reachable. Runtime ready. ${config.models.length} allowed model(s).\nE2E ${config.allowPlaintext ? 'supported; plaintext also allowed' : 'required'}. Device authentication is checked when start runs.`); return;
   }
-  if (positionals[0] !== 'start') throw new Error('Unknown command. Run pq-agent --help');
-  const identity = await restoreIdentity(config.publicKey, config.privateKey as JsonWebKey);
+  if (!['start', 'gui'].includes(positionals[0]!)) throw new Error('Unknown command. Run pq-agent --help');
   const stop = new AbortController();
   for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => stop.abort());
-  console.log(`Ready. ${config.models.length} allowed model(s). Waiting for jobs; outbound connections only.`);
-  const { runtimeKey, ...rest } = config;
-  await runWorker({ ...rest, identity, ...(runtimeKey ? { runtimeKey } : {}), onStatus: status => console.log(status) }, stop.signal);
+  const consuming = positionals[0] === 'start';
+  const showDashboard = !consuming || process.platform === 'darwin' && !values.headless;
+  let dashboard: Awaited<ReturnType<typeof startDashboard>> | undefined;
+  let stopMenuBar: (() => Promise<void>) | undefined;
+  try {
+    if (showDashboard) {
+      dashboard = await startDashboard({ server: config.server, deviceId: config.deviceId, runtimeUrl: config.runtimeUrl, models: config.models, consuming,
+        loadQueue: () => agentRequest<AgentQueue>(config.server, config.token, '/v1/agent/queue', undefined, stop.signal) });
+      console.log(`Local dashboard: ${dashboard.url}`);
+      if (process.platform === 'darwin' && !values.headless) {
+        stopMenuBar = startMenuBar(dashboard.url, consuming, () => stop.abort(), () => console.log('Menu bar unavailable. Use the local dashboard link above.'));
+      }
+      if (process.platform === 'darwin' && !values.headless && !values['no-open']) {
+        const opened = spawnSync('open', [dashboard.url], { stdio: 'ignore' });
+        if (opened.error || opened.status !== 0) console.log('Open the dashboard link above in your browser.');
+      }
+    }
+    if (!consuming) {
+      console.log('Monitor only. Keep pq-agent start or the background service running to process jobs.');
+      if (!stop.signal.aborted) await new Promise<void>(resolve => stop.signal.addEventListener('abort', () => resolve(), { once: true }));
+      return;
+    }
+    const identity = await restoreIdentity(config.publicKey, config.privateKey as JsonWebKey);
+    console.log(`Ready. ${config.models.length} allowed model(s). Waiting for jobs; relay connections are outbound only.`);
+    const { runtimeKey, ...rest } = config;
+    await runWorker({ ...rest, identity, ...(runtimeKey ? { runtimeKey } : {}), onStatus: status => console.log(status) }, stop.signal);
+  } finally { stop.abort(); await stopMenuBar?.(); await dashboard?.close(); }
 }
 main().catch(error => { console.error(error instanceof Error ? error.message : 'Agent failed'); process.exitCode = 1; });

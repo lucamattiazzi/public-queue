@@ -16,6 +16,14 @@ export const chatSchema = z.strictObject({
   messages: z.array(z.strictObject({ role: z.enum(['system', 'user', 'assistant']), content: z.string().check(z.maxLength(200_000)) })).check(z.minLength(1), z.maxLength(200)),
   temperature: z.optional(z.number().check(z.minimum(0), z.maximum(2))),
   max_tokens: z.optional(z.int().check(z.minimum(1), z.maximum(32768))),
+  chat_template_kwargs: z.optional(z.strictObject({ enable_thinking: z.boolean() })),
+  response_format: z.optional(z.discriminatedUnion('type', [
+    z.strictObject({ type: z.literal('json_object') }),
+    z.strictObject({ type: z.literal('json_schema'), json_schema: z.strictObject({
+      name: z.string().check(z.minLength(1), z.maxLength(64)),
+      strict: z.optional(z.boolean()), schema: z.record(z.string(), z.unknown()),
+    }) }),
+  ])),
 });
 export type ChatRequest = z.infer<typeof chatSchema>;
 export const resultSchema = z.object({ text: z.string(), finishReason: z.nullable(z.string()) });
@@ -32,6 +40,11 @@ export interface Job {
   result: Payload | null; error: string | null;
 }
 export interface Assignment extends Job { payload: Payload; attemptId: string; leaseMs: number }
+export interface AgentQueue {
+  counts: Record<JobStatus, number>;
+  jobs: Pick<Job, 'id' | 'status' | 'attempts' | 'createdAt' | 'updatedAt' | 'expiresAt'>[];
+  hasMore: boolean;
+}
 export interface Connection {
   server: string; token: string; deviceId: string; publicKey: string;
 }

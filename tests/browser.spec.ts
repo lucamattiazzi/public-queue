@@ -47,7 +47,7 @@ test('onboard, queue offline, refresh, run packaged agent, decrypt and view on m
     await expect(page.locator('#job-status')).toHaveText('queued');
     await page.reload();
     await expect(page.getByRole('button', { name: 'Follow job' })).toBeVisible();
-    agent = spawn(process.execPath, [resolve('dist/packages/agent/cli.js'), 'start', '--config', configPath], { stdio: 'pipe' });
+    agent = spawn(process.execPath, [resolve('dist/packages/agent/cli.js'), 'start', '--headless', '--config', configPath], { stdio: 'pipe' });
     await page.getByRole('button', { name: 'Follow job' }).click();
     await expect(page.locator('#output')).toContainText('recovered this encrypted result', { timeout: 15000 });
     await expect(page.locator('#job-status')).toHaveText('succeeded');

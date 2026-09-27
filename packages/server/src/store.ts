@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Assignment, Job, JobStatus, Payload, Submission, StreamPage } from '../../protocol/src/index.js';
+import type { AgentQueue, Assignment, Job, JobStatus, Payload, Submission, StreamPage } from '../../protocol/src/index.js';
 
 import { Fault } from './errors.js';
 export { Fault } from './errors.js';
@@ -181,6 +181,15 @@ export class Store {
       this.db.prepare('INSERT INTO usage VALUES(?,?,1) ON CONFLICT(project_id,day) DO UPDATE SET count=count+1').run(client.project_id, day);
       return this.getJob(clientId, submission.id);
     });
+  }
+  agentQueue(deviceId: string): AgentQueue {
+    this.sweep();
+    const counts: AgentQueue['counts'] = { queued: 0, running: 0, succeeded: 0, failed: 0, cancelled: 0, expired: 0 };
+    for (const row of this.db.prepare('SELECT status, COUNT(*) AS n FROM jobs WHERE device_id=? GROUP BY status').all(deviceId) as { status: JobStatus; n: number }[]) counts[row.status] = row.n;
+    const jobs = this.db.prepare(`SELECT id,status,attempts,created_at AS createdAt,updated_at AS updatedAt,expires_at AS expiresAt
+      FROM jobs WHERE device_id=? ORDER BY CASE status WHEN 'running' THEN 0 WHEN 'queued' THEN 1 ELSE 2 END,
+      CASE WHEN status='queued' THEN created_at END ASC, created_at DESC, rowid LIMIT 100`).all(deviceId) as AgentQueue['jobs'];
+    return { counts, jobs, hasMore: Object.values(counts).reduce((a, b) => a + b, 0) > jobs.length };
   }
   claim(deviceId: string): Assignment | null {
     return this.transaction(() => {
