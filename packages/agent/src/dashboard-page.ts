@@ -25,7 +25,7 @@ async function refresh() {
   const data=await response.json();
   if(!response.ok) throw Error(data.error === 'unauthorized' ? 'Session expired. Reopen the dashboard from the agent.' : data.error);
   $('status').className=''; $('status').textContent='Relay connected. Queue is up to date.';
-  $('mode').textContent=data.consuming ? 'This agent is consuming jobs. Closing this browser tab leaves it running; stopping the terminal stops the agent.' : 'Monitor only. This window does not start inference. Keep pq-agent start or the background service running.';
+  $('mode').textContent=data.consuming ? 'This agent is processing jobs. Closing this browser tab does not stop the agent.' : 'Monitor only. This window does not start inference. Keep pq-agent start or the background service running.';
   for(const key of ['queued','running','succeeded','failed']) $(key).textContent=String(data.queue.counts[key]);
   $('relay').textContent=data.server; $('device').textContent=data.deviceId; $('runtime').textContent=data.runtimeUrl; $('models').textContent=data.models.join(', ');
   const rows=data.queue.jobs.map(job=>{
