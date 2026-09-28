@@ -10,7 +10,7 @@ import { generateIdentity } from '../packages/protocol/src/crypto.js';
 import { PublicQueue, MemoryIdentityStore } from '../packages/sdk/src/index.js';
 
 // Uses a separately identified app and a temporary device; never touches the user's app or relay.
-test('packaged macOS app runs encrypted inference without system Node and leaves no orphan agent after a crash', { skip: process.platform !== 'darwin', timeout: 45000 }, async () => {
+test('packaged macOS app runs encrypted profile inference without system Node and leaves no orphan agent after a crash', { skip: process.platform !== 'darwin', timeout: 45000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'pq-macos-'));
   const name = `Public Queue Test ${crypto.randomUUID()}`;
   const support = join(homedir(), 'Library/Application Support', name);
@@ -18,7 +18,10 @@ test('packaged macOS app runs encrypted inference without system Node and leaves
   const source = resolve('dist/macos/Public Queue.app');
   const { app, store } = await createServer({ database: ':memory:', adminToken: 'a'.repeat(40) });
   const runtime = Fastify();
-  runtime.post('/v1/chat/completions', async () => ({ choices: [{ message: { content: 'Native app inference passed' }, finish_reason: 'stop' }] }));
+  runtime.post('/v1/chat/completions', async request => {
+    assert.equal((request.body as { model: string }).model, 'fixture');
+    return { choices: [{ message: { content: 'Native app inference passed' }, finish_reason: 'stop' }] };
+  });
   let child: ReturnType<typeof spawn> | undefined;
   let exited: Promise<unknown> | undefined;
   let workerPid: number | undefined;
@@ -37,7 +40,7 @@ test('packaged macOS app runs encrypted inference without system Node and leaves
     await mkdir(support, { mode: 0o700 });
     await writeFile(join(support, 'fixture.json'), JSON.stringify({ server, ...paired, publicKey: identity.publicKey, privateKey: await crypto.subtle.exportKey('jwk', identity.privateKey), runtimeUrl, models: ['fixture'] }), { mode: 0o600 });
     const sdk = new PublicQueue({ server, token: client.token, deviceId: device.id, publicKey: identity.publicKey, identityStore: new MemoryIdentityStore(), pollMs: 50 });
-    const job = await sdk.submit({ model: 'fixture', messages: [{ role: 'user', content: 'Test app packaging' }] });
+    const job = await sdk.submit({ model: 'profile:fast', messages: [{ role: 'user', content: 'Test app packaging' }] });
     child = spawn(join(appPath, 'Contents/MacOS/PublicQueue'), ['-configuration', 'fixture.json', '-loginPreferenceSet', 'YES'], { env: { ...process.env, PATH: '/usr/bin:/bin' }, stdio: ['ignore', 'pipe', 'pipe'] });
     let diagnostics = '';
     child.stderr?.on('data', chunk => { diagnostics += String(chunk); });

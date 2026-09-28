@@ -152,3 +152,10 @@ Uno stream standard Chat Completions non sa ritirare testo già mostrato. Se ave
 - Browser disconnesso: il modello può continuare e il relay conserva i blocchi entro i limiti del piano. Stream abbandonati dal client non tengono aperta una connessione server per ore.
 
 Il relay vede anche numero/dimensione/tempi dei blocchi e il fatto che un job sia streaming. La cifratura protegge il contenuto, non questi metadati.
+
+## Profili di esecuzione
+
+Puoi usare `model: "profile:fast"` o `"profile:quality"` negli stessi esempi.
+La scelta del modello avviene sull’agent dopo la decifratura. Vedi
+[modelli e profili](README-PROFILES.md) per configurare destinazioni, consenso cloud
+e comportamento degli errori.

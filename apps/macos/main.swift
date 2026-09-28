@@ -11,6 +11,7 @@ final class PublicQueueApp: NSObject, NSApplicationDelegate {
     var window: NSWindow!
     let rootStack = NSStackView()
     let document = TopView()
+    var routingEditor: RoutingEditor?
     var worker: Process?
     var pairing: Process?
     var input: Pipe?
@@ -163,6 +164,8 @@ final class PublicQueueApp: NSObject, NSApplicationDelegate {
         editButton.title = "Modifica connessione…"; editButton.target = self; editButton.action = #selector(toggleSetup); editButton.bezelStyle = .rounded
         frontendButton.title = "Collega un frontend…"; frontendButton.target = self; frontendButton.action = #selector(toggleFrontend); frontendButton.bezelStyle = .rounded
         row.addArrangedSubview(editButton); row.addArrangedSubview(frontendButton); stack.addArrangedSubview(row)
+        let routingButton = button("Modelli e profili…", #selector(showRouting))
+        stack.addArrangedSubview(routingButton)
         frontend.orientation = .vertical; frontend.alignment = .leading; frontend.spacing = 8; frontend.isHidden = true
         frontend.addArrangedSubview(label("Per inviare richieste a questo Mac, crea una connessione browser\nnella console e verifica il dispositivo con questa chiave pubblica.", 12))
         key.isEditable = false; key.isSelectable = true; key.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
@@ -207,7 +210,7 @@ final class PublicQueueApp: NSObject, NSApplicationDelegate {
         setup.isHidden = paired; connectedBox.isHidden = !paired
         editButton.isHidden = !paired; frontendButton.isHidden = !paired
         key.stringValue = config?["publicKey"] as? String ?? ""
-        modelLabel.stringValue = (config?["models"] as? [String] ?? []).joined(separator: ", ")
+        modelLabel.stringValue = config.map { ModelRouting.load($0).destinations.map { $0.model }.joined(separator: ", ") } ?? ""
         relayLabel.stringValue = URL(string: config?["server"] as? String ?? defaultRelay)?.host ?? defaultRelay
         stateLabel.stringValue = paired ? "●  Agent in avvio" : "Non collegato"
         message.stringValue = ""
@@ -215,7 +218,7 @@ final class PublicQueueApp: NSObject, NSApplicationDelegate {
     }
     func resizeWindow() {
         let paired = configuration() != nil
-        let height: CGFloat = setup.isHidden ? (frontend.isHidden ? 545 : 650) : (advanced.isHidden ? (paired ? 910 : 700) : (paired ? 1150 : 945))
+        let height: CGFloat = setup.isHidden ? (frontend.isHidden ? 600 : 710) : (advanced.isHidden ? (paired ? 910 : 700) : (paired ? 1150 : 945))
         // Advanced connection editing replaces the summary, keeping the form within laptop displays.
         connectedBox.isHidden = !setup.isHidden || !paired
         let adjusted = !setup.isHidden && paired ? height - 205 : height
@@ -234,6 +237,28 @@ final class PublicQueueApp: NSObject, NSApplicationDelegate {
     @objc func toggleFrontend() { frontend.isHidden.toggle(); resizeWindow() }
     @objc func copyKey() { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(key.stringValue, forType: .string); message.stringValue = "Chiave pubblica copiata. Incollala nella console del sito." }
     @objc func showSettings() { window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true) }
+    @objc func showRouting() {
+        guard let config = configuration() else { message.stringValue = "Collega prima questo Mac alla coda."; return }
+        if let editor = routingEditor, editor.window.isVisible { editor.show(); return }
+        routingEditor = RoutingEditor(routing: ModelRouting.load(config)) { [weak self] routing, complete in
+            guard let self = self, let path = self.selected, let data = try? JSONEncoder().encode(routing) else { complete("Configurazione non disponibile."); return }
+            let task = self.process(["configure-routing", "--config", path.path])
+            let input = Pipe(), output = Pipe()
+            task.standardInput = input; task.standardOutput = output; task.standardError = output
+            do { try task.run() } catch { complete("Impossibile avviare il salvataggio: \(error.localizedDescription)"); return }
+            DispatchQueue.global().async {
+                input.fileHandleForWriting.write(data); input.fileHandleForWriting.closeFile()
+                let reply = output.fileHandleForReading.readDataToEndOfFile(); task.waitUntilExit()
+                DispatchQueue.main.async {
+                    if task.terminationStatus == 0 {
+                        self.modelLabel.stringValue = routing.destinations.map { $0.model }.joined(separator: ", ")
+                        self.resizeWindow(); complete(nil)
+                    } else { complete(String(String(decoding: reply, as: UTF8.self).suffix(700))) }
+                }
+            }
+        }
+        routingEditor?.show()
+    }
     @objc func runtimeChanged() { if let name = runtime.titleOfSelectedItem, let url = presets[name] { runtimeURL.stringValue = url } }
     func validRelay() -> URL? {
         guard let url = URL(string: relay.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)),

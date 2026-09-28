@@ -1,11 +1,13 @@
 import { createServer } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
+import type { Routing } from './routing.js';
 import type { AgentQueue } from '../../protocol/src/index.js';
 import { dashboardHtml, dashboardCss, dashboardScript } from './dashboard-page.js';
 
 interface DashboardOptions {
   server: string; deviceId: string; runtimeUrl: string; models: string[];
   consuming: boolean;
+  loadRouting?: () => Promise<Routing>;
   loadQueue: () => Promise<AgentQueue>;
 }
 export async function startDashboard(options: DashboardOptions): Promise<{ url: string; close: () => Promise<void> }> {
@@ -36,7 +38,9 @@ export async function startDashboard(options: DashboardOptions): Promise<{ url: 
         pending ??= options.loadQueue();
         try { cached = { value: await pending, until: Date.now() + 2000 }; } finally { pending = undefined; }
       }
-      send(200, JSON.stringify({ server: options.server, deviceId: options.deviceId, runtimeUrl: options.runtimeUrl, models: options.models, consuming: options.consuming, queue: cached.value, checkedAt: Date.now() }));
+      const routing = await options.loadRouting?.();
+      const profiles = Object.fromEntries(Object.entries(routing?.profiles ?? {}).map(([profile, id]) => [profile, routing?.destinations.find(destination => destination.id === id)?.model]));
+      send(200, JSON.stringify({ profiles, server: options.server, deviceId: options.deviceId, runtimeUrl: routing ? [...new Set(routing.destinations.map(destination => destination.runtimeUrl))].join(", ") : options.runtimeUrl, models: routing?.destinations.map(destination => destination.model) ?? options.models, consuming: options.consuming, queue: cached.value, checkedAt: Date.now() }));
     } catch (error) {
       const status = error && typeof error === 'object' && 'status' in error ? error.status : undefined;
       const message = status === 404 ? 'Update your relay to a version with the agent queue API.' : status === 401 ? 'Device access is no longer valid. Pair this device again.' : 'Cannot reach the relay. Check your connection; jobs shown below may be outdated.';

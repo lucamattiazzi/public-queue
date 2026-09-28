@@ -49,7 +49,13 @@ del relay. Crea una connessione browser per questo dispositivo verificando la
 chiave. Integra quella connessione con il [SDK frontend](README-FRONTEND.md).
 La chiave pubblica non è la credenziale privata del frontend.
 
-## Cambiare sito o modello
+## Scegliere modelli diversi per i job
+
+Apri **Modelli e profili…**. Puoi aggiungere destinazioni locali o cloud e associare
+`fast`, `quality`, `vision` e `cloud` ai modelli desiderati. Non serve rifare il pairing
+é riavviare l’agent. Vedi [configurazione e uso dal frontend](README-PROFILES.md).
+
+## Cambiare sito o connessione iniziale
 
 Apri **Modifica connessione…**. In **Impostazioni avanzate** puoi cambiare sito,
 URL del runtime, modelli consentiti e l’eventuale chiave API del runtime.

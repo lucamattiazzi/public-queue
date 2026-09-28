@@ -7,10 +7,13 @@ import type { Identity } from '../../protocol/src/crypto.js';
 import { sleep } from '../../sdk/src/index.js';
 import { inferenceFetch } from './runtime.js';
 import type { Response as InferenceResponse } from 'undici';
+import { effectiveRouting, resolveDestination, runtimeBase, RoutingError, type Routing } from './routing.js';
+export { runtimeBase } from './routing.js';
 
 export interface WorkerOptions {
   server: string; token: string; deviceId: string; identity: Identity;
   runtimeUrl: string; models: string[]; runtimeKey?: string; allowPlaintext?: boolean;
+  routing?: Routing; loadRouting?: () => Promise<Routing>;
   pollMs?: number; timeoutMs?: number; onStatus?: (status: string) => void;
 }
 class HttpError extends Error { constructor(readonly status: number) { super(`HTTP ${status}`); } }
@@ -21,11 +24,6 @@ export async function agentRequest<T>(server: string, token: string, path: strin
   });
   if (!response.ok) throw new HttpError(response.status);
   return response.json() as Promise<T>;
-}
-export function runtimeBase(value: string): string {
-  const url = new URL(value);
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error('Invalid runtime URL');
-  return url.href.replace(/\/$/, '');
 }
 async function boundedJson(response: Response | InferenceResponse, maxBytes = 1_000_000): Promise<unknown> {
   if (!response.body) throw new Error('Empty inference response');
@@ -69,11 +67,12 @@ export async function execute(job: Assignment, options: WorkerOptions, signal: A
       if (job.payload.mode === 'plain' && !options.allowPlaintext) throw new Error('Agent requires end-to-end encryption');
       const data = job.payload.mode === 'encrypted' ? await open(job.payload.data, options.identity, context, job.payload.data.publicKey) : job.payload.data;
       const request = chatSchema.parse(data);
-      if (!options.models.includes(request.model)) throw new Error('Model is not allowed on this device');
+      const routing = options.loadRouting ? await options.loadRouting() : effectiveRouting(options);
+      const destination = resolveDestination(request.model, routing);
       if (Boolean(request.stream) !== Boolean(job.stream)) throw new Error('Stream mode mismatch');
-      const response = await inferenceFetch(`${runtimeBase(options.runtimeUrl)}/chat/completions`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...(options.runtimeKey ? { Authorization: `Bearer ${options.runtimeKey}` } : {}) },
-        body: JSON.stringify({ ...request, max_tokens: request.max_tokens ?? 2048, stream: Boolean(job.stream) }), signal: workSignal, redirect: 'error',
+      const response = await inferenceFetch(`${destination.runtimeUrl}/chat/completions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(destination.runtimeKey ? { Authorization: `Bearer ${destination.runtimeKey}` } : {}) },
+        body: JSON.stringify({ ...request, model: destination.model, max_tokens: request.max_tokens ?? 2048, stream: Boolean(job.stream) }), signal: workSignal, redirect: 'error',
       });
       if (!response.ok) throw new Error(`Inference returned HTTP ${response.status}`);
       if (job.stream) result = await streamCompletion(response, job, options, workSignal);
@@ -85,7 +84,7 @@ export async function execute(job: Assignment, options: WorkerOptions, signal: A
     } catch (error) {
       if (leaseLost || signal.aborted) return;
       // Do not forward arbitrary provider errors: they may contain prompts or credentials.
-      result = { message: error instanceof Error && /^(Model is not allowed|Agent requires|Inference returned HTTP|Inference response exceeds)/.test(error.message) ? error.message : workSignal.aborted ? 'Inference timed out' : 'Inference failed; check runtime and request compatibility' };
+      result = { message: error instanceof RoutingError ? error.message : error instanceof Error && /^(Model is not allowed|Agent requires|Inference returned HTTP|Inference response exceeds)/.test(error.message) ? error.message : workSignal.aborted ? 'Inference timed out' : 'Inference failed; check runtime and request compatibility' };
     }
     if (leaseLost || signal.aborted) return;
     const payload: Payload = job.payload.mode === 'encrypted' ? { mode: 'encrypted', data: await seal(result, options.identity, job.payload.data.publicKey, { ...context, direction: 'response' }) } : { mode: 'plain', data: result };

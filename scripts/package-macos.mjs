@@ -5,7 +5,7 @@ import { resolve, join } from 'node:path';
 
 if (process.platform !== 'darwin') throw new Error('Build the macOS app on a Mac with Xcode command-line tools.');
 const run = (command, args) => execFileSync(command, args, { stdio: 'inherit' });
-const version = '0.2.0';
+const version = '0.3.0';
 const nodeVersion = '24.19.0';
 const cache = resolve('.data/macos-build');
 const output = resolve('dist/macos');
@@ -33,7 +33,7 @@ for (const arch of ['arm64', 'x64']) {
     await writeFile(archive, bytes);
   }
   run('tar', ['-xzf', archive, '-C', cache, `node-v${nodeVersion}-darwin-${arch}/bin/node`, `node-v${nodeVersion}-darwin-${arch}/LICENSE`]);
-  run('xcrun', ['swiftc', '-O', '-target', `${arch === 'x64' ? 'x86_64' : arch}-apple-macosx14.0`, 'apps/macos/PublicQueue.swift', '-o', join(cache, `app-${arch}`)]);
+  run('xcrun', ['swiftc', '-O', '-target', `${arch === 'x64' ? 'x86_64' : arch}-apple-macosx14.0`, 'apps/macos/main.swift', 'apps/macos/Routing.swift', '-o', join(cache, `app-${arch}`)]);
 }
 run('xcrun', ['lipo', '-create', ...['arm64', 'x64'].map(arch => join(cache, `app-${arch}`)), '-output', join(contents, 'MacOS/PublicQueue')]);
 run('xcrun', ['lipo', '-create', ...['arm64', 'x64'].map(arch => join(cache, `node-v${nodeVersion}-darwin-${arch}/bin/node`)), '-output', join(contents, 'Helpers/node')]);

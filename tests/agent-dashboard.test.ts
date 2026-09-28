@@ -47,3 +47,19 @@ test('relay failures are reported without leaking arbitrary upstream errors or i
     assert.equal(text.includes('"queue"'), false);
   } finally { await dashboard.close(); }
 });
+
+test('dashboard refreshes routing metadata without exposing provider credentials', async () => {
+  const routing = { destinations: [{ id: 'local', name: 'Local', model: 'new-model', runtimeUrl: 'http://127.0.0.1:9090/v1', kind: 'local' as const, cloudApproved: false, runtimeKey: 'PROVIDER_SECRET' }], profiles: { fast: 'local' } };
+  const dashboard = await startDashboard({ server: 'https://relay.example', deviceId: 'device', runtimeUrl: 'http://localhost:8000/v1', models: ['old-model'], consuming: true, loadQueue: async () => queue, loadRouting: async () => routing });
+  const url = new URL(dashboard.url);
+  try {
+    const response = await fetch(`${url.origin}/api/status`, { headers: { authorization: `Bearer ${url.hash.slice(1)}` } });
+    const body = await response.json();
+    assert.deepEqual(body.models, ['new-model']);
+    assert.deepEqual(body.profiles, { fast: 'new-model' });
+    assert.equal(JSON.stringify(body).includes('PROVIDER_SECRET'), false);
+    routing.destinations[0]!.model = 'changed-model';
+    const next = await fetch(`${url.origin}/api/status`, { headers: { authorization: `Bearer ${url.hash.slice(1)}` } });
+    assert.deepEqual((await next.json()).models, ['changed-model']);
+  } finally { await dashboard.close(); }
+});

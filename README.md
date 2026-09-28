@@ -12,6 +12,8 @@ Source: [GitHub](https://github.com/lucamattiazzi/public-queue). See [publishing
 
 The standalone macOS app includes its runtime, runs the agent in the menu bar, and opens the local queue dashboard in your browser. See [installation and pairing](docs/README-MACOS.md). The current preview supports macOS 14+, Apple Silicon and Intel; it is ad-hoc signed and not notarized yet.
 
+The Mac app also supports [multiple model destinations and execution profiles](docs/README-PROFILES.md): request `profile:fast` or `profile:quality` from your frontend, and choose the actual endpoint locally. Cloud destinations require explicit approval; there is no automatic fallback.
+
 ## Developer packages
 
 ```sh

@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { fingerprint, generateIdentity, restoreIdentity } from '../../protocol/src/crypto.js';
 import { requireSecureUrl } from '../../protocol/src/index.js';
 import { agentRequest, discoverModels, runWorker, runtimeBase } from './worker.js';
+import { effectiveRouting, routingSchema } from './routing.js';
 import { startDashboard } from './dashboard.js';
 import { startMenuBar } from './menubar.js';
 import type { AgentQueue } from '../../protocol/src/index.js';
@@ -26,6 +27,7 @@ const configPath = resolve(values.config ?? join(homedir(), '.config/public-queu
 const configSchema = z.object({
   server: z.string(), token: z.string(), deviceId: z.uuid(), publicKey: z.string(),
   privateKey: z.record(z.string(), z.unknown()), runtimeUrl: z.string(), models: z.array(z.string()).min(1),
+  routing: routingSchema.optional(),
   runtimeKey: z.string().optional(), allowPlaintext: z.boolean().default(false),
 });
 const readConfig = async () => {
@@ -107,14 +109,26 @@ async function main(): Promise<void> {
   if (positionals[0] === 'connect') { await connect(); return; }
   if (positionals[0] === 'service') { await service(positionals[1] ?? ''); return; }
   const config = await readConfig();
+  if (positionals[0] === 'configure-routing') {
+    let input = '';
+    for await (const chunk of process.stdin) {
+      input += String(chunk);
+      if (Buffer.byteLength(input) > 128_000) throw new Error('Routing configuration exceeds 128 KB');
+    }
+    const routing = routingSchema.parse(JSON.parse(input));
+    await saveConfig({ ...config, routing });
+    console.log('Destinations and profiles saved. Changes apply to subsequent jobs.'); return;
+  }
   if (positionals[0] === 'key') { console.log(`${config.publicKey}\nFingerprint: ${await fingerprint(config.publicKey)}`); return; }
   if (positionals[0] === 'doctor') {
     const health = await fetch(`${requireSecureUrl(config.server)}/health`, { signal: AbortSignal.timeout(10000), redirect: 'error' });
     if (!health.ok) throw new Error(`Service health: HTTP ${health.status}`);
-    const models = await discoverModels(config.runtimeUrl, config.runtimeKey);
-    const missing = config.models.filter(model => !models.includes(model));
-    if (missing.length) throw new Error(`Selected models not available: ${missing.join(', ')}`);
-    console.log(`Service reachable. Runtime ready. ${config.models.length} allowed model(s).\nE2E ${config.allowPlaintext ? 'supported; plaintext also allowed' : 'required'}. Device authentication is checked when start runs.`); return;
+    for (const destination of effectiveRouting(config).destinations) {
+      if (destination.kind === 'cloud' && !destination.cloudApproved) continue;
+      const models = await discoverModels(destination.runtimeUrl, destination.runtimeKey);
+      if (!models.includes(destination.model)) throw new Error(`Selected model not available: ${destination.name}`);
+    }
+    console.log(`Service reachable. Runtime ready. ${effectiveRouting(config).destinations.length} model destination(s).\nE2E ${config.allowPlaintext ? 'supported; plaintext also allowed' : 'required'}. Device authentication is checked when start runs.`); return;
   }
   if (!['start', 'gui'].includes(positionals[0]!)) throw new Error('Unknown command. Run pq-agent --help');
   const stop = new AbortController();
@@ -130,6 +144,7 @@ async function main(): Promise<void> {
   try {
     if (showDashboard) {
       dashboard = await startDashboard({ server: config.server, deviceId: config.deviceId, runtimeUrl: config.runtimeUrl, models: config.models, consuming,
+        loadRouting: async () => effectiveRouting(await readConfig()),
         loadQueue: () => agentRequest<AgentQueue>(config.server, config.token, '/v1/agent/queue', undefined, stop.signal) });
       console.log(`Local dashboard: ${dashboard.url}`);
       if (process.platform === 'darwin' && !values.headless && !values['desktop-host']) {
@@ -146,9 +161,9 @@ async function main(): Promise<void> {
       return;
     }
     const identity = await restoreIdentity(config.publicKey, config.privateKey as JsonWebKey);
-    console.log(`Ready. ${config.models.length} allowed model(s). Waiting for jobs; relay connections are outbound only.`);
-    const { runtimeKey, ...rest } = config;
-    await runWorker({ ...rest, identity, ...(runtimeKey ? { runtimeKey } : {}), onStatus: status => console.log(status) }, stop.signal);
+    console.log(`Ready. ${effectiveRouting(config).destinations.length} model destination(s). Waiting for jobs; relay connections are outbound only.`);
+    const { runtimeKey, routing, ...rest } = config;
+    await runWorker({ ...rest, identity, loadRouting: async () => effectiveRouting(await readConfig()), ...(runtimeKey ? { runtimeKey } : {}), onStatus: status => console.log(status) }, stop.signal);
   } finally { stop.abort(); if (values['desktop-host']) process.stdin.pause(); await stopMenuBar?.(); await dashboard?.close(); }
 }
 main().catch(error => { console.error(error instanceof Error ? error.message : 'Agent failed'); process.exitCode = 1; });
